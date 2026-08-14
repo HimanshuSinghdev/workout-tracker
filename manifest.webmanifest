@@ -1,0 +1,10 @@
+{
+  "name": "Train Log",
+  "short_name": "Train Log",
+  "description": "After-workout photo and weight tracker",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#14161A",
+  "theme_color": "#14161A",
+  "icons": []
+}

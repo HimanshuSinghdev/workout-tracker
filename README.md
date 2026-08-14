@@ -6,9 +6,10 @@
   <p><strong>A sleek, offline-first React fitness tracker for logging daily weight, snapping progress photos, and visually tracking your lean mass gains.</strong></p>
 
   <!-- LIVE DEMO BUTTON -->
-  <a href="https://your-live-demo-link-here.vercel.app" target="_blank">
+  <a href="https://himanshusinghdev.github.io/workout-tracker/" target="_blank">
     <img src="https://img.shields.io/badge/🚀_OPEN_LIVE_APP-FFD23F?style=for-the-badge&logoColor=14161A&textColor=14161A" alt="Open Live App" />
   </a>
+
   <br />
   <br />
 
@@ -22,7 +23,7 @@
 
 ## 🎥 The Aesthetic & The Grind
 
-**TRAIN LOG** is a highly visual, aesthetic-driven workout tracker designed for the modern gym-goer. Because tracking progress is about more than just numbers, this app focuses on what you actually see. 
+**TRAIN LOG** is a highly visual, aesthetic-driven workout tracker designed for the modern gym-goer. Because tracking progress is about more than just numbers, this app focuses on what you actually see.
 
 Whether you are bulking up or steadily building lean mass, this tracker keeps you accountable. Log your daily weight, attach a post-workout progress picture with cinematic lighting, and let the app handle the rest. Compare "Day 1" to "Day 30" with built-in visual side-by-sides, track your weight spikes on the sparkline trend graph, and never lose your streak.
 
@@ -45,22 +46,31 @@ Whether you are bulking up or steadily building lean mass, this tracker keeps yo
 To run this project locally on your machine, follow these steps:
 
 **1. Clone the repository**
+
 ```bash
-git clone [https://github.com/yourusername/train-log.git](https://github.com/yourusername/train-log.git)
-cd train-log
+git clone https://github.com/HimanshuSinghdev/workout-tracker.git
+cd workout-tracker
 ```
 
 **2. Install dependencies**
+
 ```bash
 npm install
 ```
-*(Make sure you have `lucide-react` installed for the icons: `npm install lucide-react`)*
 
 **3. Start the development server**
+
 ```bash
 npm run dev
 ```
+
 Open `http://localhost:5173` in your browser to view the app.
+
+---
+
+## 🌐 Deployment
+
+Every push to `main` automatically rebuilds and redeploys the live app via GitHub Actions — no manual build step needed. See `.github/workflows/deploy.yml`.
 
 ---
 
@@ -68,7 +78,8 @@ Open `http://localhost:5173` in your browser to view the app.
 
 *   **[React](https://reactjs.org/)** - UI Framework (Hooks: `useState`, `useEffect`, `useRef`, `useCallback`)
 *   **[Lucide React](https://lucide.dev/)** - Clean, crisp iconography
-*   **IndexedDB / LocalStorage** - Persistent offline browser data
+*   **[Vite](https://vitejs.dev/)** - Build tool
+*   **IndexedDB** - Persistent offline browser data
 *   **HTML5 Canvas API** - Client-side image processing
 
 ---

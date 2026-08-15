@@ -21,11 +21,39 @@ import {
 
 const INDEX_KEY = "workoutlog:index";
 const photoKey = (id) => `workoutlog:photo:${id}`;
+const originalPhotoKey = (id) => `workoutlog:original:${id}`;
 
 const THUMB_MAX = 140;
 const FULL_MAX = 1000;
 const THUMB_QUALITY = 0.55;
 const FULL_QUALITY = 0.82;
+
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Could not read that file."));
+    reader.onload = () => resolve(reader.result);
+    reader.readAsDataURL(file);
+  });
+}
+
+function dataURLtoBlob(dataUrl) {
+  const [header, base64] = dataUrl.split(",");
+  const mimeMatch = header.match(/data:(.*?);base64/);
+  const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+function extensionForMime(mime) {
+  if (mime.includes("png")) return "png";
+  if (mime.includes("webp")) return "webp";
+  if (mime.includes("heic") || mime.includes("heif")) return "heic";
+  if (mime.includes("gif")) return "gif";
+  return "jpg";
+}
 
 function resizeImage(file, maxDim, quality) {
   return new Promise((resolve, reject) => {
@@ -188,6 +216,7 @@ export default function WorkoutTracker() {
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [justExported, setJustExported] = useState(false);
+  const [downloadingPhoto, setDownloadingPhoto] = useState(false);
 
   const fileInputRef = useRef(null);
   const importInputRef = useRef(null);
@@ -283,6 +312,13 @@ export default function WorkoutTracker() {
       const full = await resizeImage(pendingFullFile, FULL_MAX, FULL_QUALITY);
       const id = uid();
       await window.storage.set(photoKey(id), full, false);
+      try {
+        const original = await readFileAsDataURL(pendingFullFile);
+        await window.storage.set(originalPhotoKey(id), original, false);
+      } catch (err) {
+        // Original is a nice-to-have for downloads later; don't block saving
+        // the entry if it can't be stored (e.g. a very large photo).
+      }
       const entry = {
         id,
         date: formDate,
@@ -312,6 +348,11 @@ export default function WorkoutTracker() {
       } catch (e) {
         // photo may already be gone; index is the source of truth for the UI
       }
+      try {
+        await window.storage.delete(originalPhotoKey(id), false);
+      } catch (e) {
+        // same as above
+      }
       notify("Entry deleted.");
       if (compareAId === id) setCompareAId("");
       if (compareBId === id) setCompareBId("");
@@ -328,6 +369,11 @@ export default function WorkoutTracker() {
         await window.storage.delete(photoKey(id), false);
       } catch (e) {
         // photo may already be gone; index is the source of truth for the UI
+      }
+      try {
+        await window.storage.delete(originalPhotoKey(id), false);
+      } catch (e) {
+        // same as above
       }
       setComparePhotos((prev) => {
         const next = { ...prev };
@@ -348,12 +394,19 @@ export default function WorkoutTracker() {
       const result = await window.storage.get(INDEX_KEY, false);
       const list = result && result.value ? JSON.parse(result.value) : [];
       const photos = {};
+      const originals = {};
       for (const entry of list) {
         try {
           const p = await window.storage.get(photoKey(entry.id), false);
           photos[entry.id] = p && p.value ? p.value : null;
         } catch (err) {
           photos[entry.id] = null;
+        }
+        try {
+          const o = await window.storage.get(originalPhotoKey(entry.id), false);
+          if (o && o.value) originals[entry.id] = o.value;
+        } catch (err) {
+          // no original saved for this entry
         }
       }
       const payload = {
@@ -363,6 +416,7 @@ export default function WorkoutTracker() {
         unit,
         entries: list,
         photos,
+        originals,
       };
       const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
@@ -418,6 +472,14 @@ export default function WorkoutTracker() {
             // skip photo if it fails to write, keep the entry
           }
         }
+        const originalData = payload.originals ? payload.originals[incoming.id] : null;
+        if (originalData) {
+          try {
+            await window.storage.set(originalPhotoKey(entry.id), originalData, false);
+          } catch (err) {
+            // skip original if it fails to write, keep the entry
+          }
+        }
         merged.push(entry);
         added += 1;
       }
@@ -463,6 +525,60 @@ export default function WorkoutTracker() {
       }
     } catch (err) {
       // keep showing the thumbnail if the full photo can't load
+    }
+  };
+
+  const handleDownloadPhoto = async (entry) => {
+    if (downloadingPhoto) return;
+    setDownloadingPhoto(true);
+    try {
+      let dataUrl = null;
+      try {
+        const orig = await window.storage.get(originalPhotoKey(entry.id), false);
+        dataUrl = orig && orig.value ? orig.value : null;
+      } catch (e) {
+        // no original saved for this entry (e.g. saved before this feature existed)
+      }
+      if (!dataUrl) {
+        try {
+          const fallback = await window.storage.get(photoKey(entry.id), false);
+          dataUrl = fallback && fallback.value ? fallback.value : null;
+        } catch (e) {
+          dataUrl = null;
+        }
+      }
+      if (!dataUrl) {
+        notify("No photo to download.", "error");
+        return;
+      }
+
+      const blob = dataURLtoBlob(dataUrl);
+      const filename = `trainlog-${entry.date}.${extensionForMime(blob.type)}`;
+      const file = new File([blob], filename, { type: blob.type });
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: filename });
+          return;
+        } catch (err) {
+          if (err && err.name === "AbortError") return; // user closed the share sheet
+          // otherwise fall through to a plain download below
+        }
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      notify("Photo downloaded.");
+    } catch (err) {
+      notify("Couldn't download that photo. Try again.", "error");
+    } finally {
+      setDownloadingPhoto(false);
     }
   };
 
@@ -1309,32 +1425,59 @@ export default function WorkoutTracker() {
             <div style={{ fontWeight: 700 }}>{formatDateBadge(lightbox.entry.date)} · {lightbox.entry.weight} {lightbox.entry.unit}</div>
             {lightbox.entry.note && <div style={{ color: "#9099A3", marginTop: 4 }}>{lightbox.entry.note}</div>}
           </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (window.confirm("Remove this photo? The entry (date, weight, note) will be kept.")) {
-                handleRemovePhoto(lightbox.entry.id);
-              }
-            }}
-            className="wt-btn"
-            style={{
-              marginTop: 14,
-              background: "transparent",
-              border: "1px solid #7A2E22",
-              color: "#FF8A6B",
-              borderRadius: 8,
-              padding: "9px 16px",
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: "0.4px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            <Trash2 size={14} /> REMOVE PHOTO
-          </button>
+          <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownloadPhoto(lightbox.entry);
+              }}
+              disabled={downloadingPhoto}
+              className="wt-btn"
+              style={{
+                background: "transparent",
+                border: "1px solid #3A3F47",
+                color: "#EDEEEC",
+                borderRadius: 8,
+                padding: "9px 16px",
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: "0.4px",
+                cursor: downloadingPhoto ? "default" : "pointer",
+                opacity: downloadingPhoto ? 0.6 : 1,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              {downloadingPhoto ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Download size={14} />}
+              {downloadingPhoto ? "PREPARING…" : "DOWNLOAD / SHARE"}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (window.confirm("Remove this photo? The entry (date, weight, note) will be kept.")) {
+                  handleRemovePhoto(lightbox.entry.id);
+                }
+              }}
+              className="wt-btn"
+              style={{
+                background: "transparent",
+                border: "1px solid #7A2E22",
+                color: "#FF8A6B",
+                borderRadius: 8,
+                padding: "9px 16px",
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: "0.4px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Trash2 size={14} /> REMOVE
+            </button>
+          </div>
           <button
             onClick={() => setLightbox(null)}
             style={{

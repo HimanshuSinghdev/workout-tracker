@@ -197,6 +197,23 @@ export default function WorkoutTracker() {
   const [user, setUser] = useState(() => auth.currentUser);
   const [offerMigration, setOfferMigration] = useState(false);
   const [migrating, setMigrating] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+    const handleOutsideClick = (e) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target)) {
+        setAccountMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("touchstart", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick);
+    };
+  }, [accountMenuOpen]);
 
   const fileInputRef = useRef(null);
   const importInputRef = useRef(null);
@@ -564,6 +581,7 @@ export default function WorkoutTracker() {
       boxSizing: "border-box",
       maxWidth: 720,
       margin: "0 auto",
+      position: "relative",
     },
   };
 
@@ -670,72 +688,130 @@ export default function WorkoutTracker() {
         </div>
         <div
           style={{
-            transform: "rotate(-3deg)",
-            border: "1.5px solid #FFD23F",
-            color: "#FFD23F",
-            fontFamily: "'Arial Black', Arial, sans-serif",
-            fontSize: 12,
-            fontWeight: 900,
-            padding: "4px 8px",
-            borderRadius: 3,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
           }}
         >
-          DAY {String(entries.length).padStart(3, "0")}
-        </div>
-      </header>
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          gap: 8,
-          marginBottom: 12,
-        }}
-      >
-        {user ? (
-          <>
-            {user.photoURL && (
-              <img
-                src={user.photoURL}
-                alt=""
-                style={{ width: 20, height: 20, borderRadius: "50%" }}
-                referrerPolicy="no-referrer"
-              />
-            )}
-            <span style={{ fontSize: 11, color: "#9099A3" }}>
-              Synced as {user.displayName || user.email}
-            </span>
-            <button
-              className="wt-btn wt-ghost"
-              onClick={handleSignOut}
-              style={{
-                padding: "4px 8px",
-                fontSize: 11,
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-              }}
-            >
-              <LogOut size={12} /> Sign out
-            </button>
-          </>
-        ) : (
-          <button
-            className="wt-btn wt-ghost"
-            onClick={handleSignIn}
+          <div
             style={{
+              transform: "rotate(-3deg)",
+              border: "1.5px solid #FFD23F",
+              color: "#FFD23F",
+              fontFamily: "'Arial Black', Arial, sans-serif",
+              fontSize: 12,
+              fontWeight: 900,
               padding: "4px 8px",
-              fontSize: 11,
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
+              borderRadius: 3,
             }}
           >
-            <LogIn size={12} /> Sign in with Google to sync
-          </button>
+            DAY {String(entries.length).padStart(3, "0")}
+          </div>
+
+          <div ref={accountMenuRef} style={{ position: "relative" }}>
+            <button
+          onClick={() => setAccountMenuOpen((v) => !v)}
+          aria-label={user ? "Account menu" : "Sign in with Google"}
+          style={{
+            width: 30,
+            height: 30,
+            borderRadius: "50%",
+            border: user ? "none" : "1.5px solid #3A3F47",
+            background: user ? "transparent" : "#1B1E24",
+            padding: 0,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            overflow: "hidden",
+            flexShrink: 0,
+          }}
+        >
+          {user && user.photoURL ? (
+            <img
+              src={user.photoURL}
+              alt=""
+              referrerPolicy="no-referrer"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
+            <LogIn size={14} color="#9099A3" />
+          )}
+        </button>
+
+        {accountMenuOpen && (
+          <div
+            style={{
+              position: "absolute",
+              top: 38,
+              right: 0,
+              minWidth: 210,
+              background: "#1B1E24",
+              border: "1px solid #2A2E35",
+              borderRadius: 10,
+              padding: 12,
+              boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+              fontSize: 12,
+              animation: "wt-pop-in 0.12s ease-out",
+            }}
+          >
+            {user ? (
+              <>
+                <div style={{ color: "#EDEEEC", fontWeight: 700, marginBottom: 2, wordBreak: "break-word" }}>
+                  {user.displayName || "Signed in"}
+                </div>
+                <div style={{ color: "#9099A3", marginBottom: 10, wordBreak: "break-word" }}>
+                  {user.email}
+                </div>
+                <button
+                  className="wt-btn"
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    handleSignOut();
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "6px 10px",
+                    fontSize: 12,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                  }}
+                >
+                  <LogOut size={13} /> Sign out
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ color: "#9099A3", marginBottom: 10 }}>
+                  Sign in to sync your entries across devices.
+                </div>
+                <button
+                  className="wt-btn"
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    handleSignIn();
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "6px 10px",
+                    fontSize: 12,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                  }}
+                >
+                  <LogIn size={13} /> Sign in with Google
+                </button>
+              </>
+            )}
+          </div>
         )}
-      </div>
+          </div>
+        </div>
+      </header>
 
       {offerMigration && (
         <div

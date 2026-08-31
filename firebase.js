@@ -14,12 +14,21 @@ const firebaseConfig = {
   appId: "1:1079206932137:web:0d1916c5c7ead236b2c3b8",
   measurementId: "G-GG8C2F03P4"
 };
+// Firebase project config. These values are safe to keep public — they
+// just tell the app which Firebase project to talk to. Actual security
+// is enforced by the Firestore rules (see README), which only let a
+// signed-in user read/write their own data.
+//
+// Get these from: Firebase Console -> Project Settings -> General ->
+// "Your apps" -> Web app -> SDK setup and configuration -> Config.
 
 import { initializeApp } from "firebase/app";
 import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut as fbSignOut,
   onAuthStateChanged,
 } from "firebase/auth";
@@ -42,8 +51,37 @@ const db = initializeFirestore(app, {
   }),
 });
 
+// A popup has nowhere to render when the app is running installed
+// (standalone / home-screen) — there's no browser chrome around it —
+// so in that case we do a full-page redirect sign-in instead.
+function isInstalledApp() {
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true
+  );
+}
+
 export function signInWithGoogle() {
-  return signInWithPopup(auth, googleProvider);
+  if (isInstalledApp()) {
+    return signInWithRedirect(auth, googleProvider);
+  }
+  return signInWithPopup(auth, googleProvider).catch((err) => {
+    // Some browsers/webviews block or simply don't support popups even
+    // when not "installed" — fall back to redirect rather than failing.
+    if (
+      err.code === "auth/popup-blocked" ||
+      err.code === "auth/operation-not-supported-in-this-environment"
+    ) {
+      return signInWithRedirect(auth, googleProvider);
+    }
+    throw err;
+  });
+}
+
+// Call once at startup so a pending redirect-based sign-in (from the
+// installed-app path above) gets picked up after the page reloads.
+export function completeRedirectSignIn() {
+  return getRedirectResult(auth).catch(() => null);
 }
 
 export function signOutOfGoogle() {

@@ -2,8 +2,13 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { localStorageBackend } from "./storagePolyfill.js";
 import { firebaseStorage } from "./firebaseStorage.js";
-import { watchAuthState } from "./firebase.js";
+import { watchAuthState, completeRedirectSignIn } from "./firebase.js";
 import WorkoutTracker from "./App.jsx";
+
+// Picks up the result of a redirect-based sign-in (used when the app is
+// running installed/standalone) after the page reloads back to the app.
+completeRedirectSignIn();
+
 
 // Default to the local (IndexedDB) backend so the app works fully
 // offline / signed-out, exactly as before.

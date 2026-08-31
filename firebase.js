@@ -6,12 +6,13 @@
 // Get these from: Firebase Console -> Project Settings -> General ->
 // "Your apps" -> Web app -> SDK setup and configuration -> Config.
 const firebaseConfig = {
-  apiKey: "REPLACE_ME",
-  authDomain: "REPLACE_ME.firebaseapp.com",
-  projectId: "REPLACE_ME",
-  storageBucket: "REPLACE_ME.appspot.com",
-  messagingSenderId: "REPLACE_ME",
-  appId: "REPLACE_ME",
+  apiKey: "AIzaSyA-H1jtiGKcI3ZV9-1KiBa3CZiH3Az-B_8",
+  authDomain: "train-log-b2e12.firebaseapp.com",
+  projectId: "train-log-b2e12",
+  storageBucket: "train-log-b2e12.firebasestorage.app",
+  messagingSenderId: "1079206932137",
+  appId: "1:1079206932137:web:0d1916c5c7ead236b2c3b8",
+  measurementId: "G-GG8C2F03P4"
 };
 
 import { initializeApp } from "firebase/app";

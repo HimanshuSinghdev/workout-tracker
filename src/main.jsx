@@ -9,6 +9,30 @@ import WorkoutTracker from "./App.jsx";
 // running installed/standalone) after the page reloads back to the app.
 completeRedirectSignIn();
 
+// On Android, an installed app's sign-in button sends the user out to a
+// separate browser tab to complete Google sign-in (see firebase.js). This
+// installed-app window is left sitting in the background the whole time,
+// so when the user switches back to it, force a reload to pick up the
+// now-persisted sign-in instead of silently staying on the stale,
+// signed-out screen.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  let pending = false;
+  try {
+    pending = window.localStorage.getItem("trainlog_pending_redirect_signin") === "1";
+  } catch (e) {
+    pending = false;
+  }
+  if (pending) {
+    try {
+      window.localStorage.removeItem("trainlog_pending_redirect_signin");
+    } catch (e) {
+      // Ignore — worst case this check runs again next time visible.
+    }
+    window.location.reload();
+  }
+});
+
 
 // Default to the local (IndexedDB) backend so the app works fully
 // offline / signed-out, exactly as before.

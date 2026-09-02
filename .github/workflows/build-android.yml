@@ -1,5 +1,5 @@
 name: Build Android APK
-
+ 
 # Runs whenever you push to main, or you can trigger it manually from the
 # Actions tab. It regenerates the native android/ project from scratch
 # every time (it's not committed to the repo — see .gitignore) so there's
@@ -8,54 +8,71 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-
+ 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Needed so this workflow is allowed to create/update a GitHub Release.
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+ 
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-
+ 
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
-
+ 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-
+ 
       - name: Build web app for Android
         run: npm run build:android
-
+ 
       - name: Add native Android project
         run: npx cap add android
-
+ 
       - name: Add Firebase config for the Android app
         run: cp google-services.json android/app/google-services.json
-
+ 
       - name: Use the fixed debug keystore (keeps Google Sign-In's SHA-1 stable)
         run: |
           mkdir -p ~/.android
           cp debug.keystore ~/.android/debug.keystore
-
+ 
       - name: Sync web assets into the native project
         run: npx cap sync android
-
+ 
       - name: Make gradlew executable
         run: chmod +x android/gradlew
-
+ 
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
-
-      - name: Upload APK
+ 
+      - name: Upload APK as a build artifact
         uses: actions/upload-artifact@v4
         with:
           name: train-log-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+ 
+      - name: Publish APK as a GitHub Release
+        # Creates (or updates, if it already exists) a release tagged
+        # "android-latest" with the freshly built APK attached — so there's
+        # always one stable link to the newest build, no manual re-upload
+        # from your phone needed.
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: Train Log (Android) — latest build
+          body: Automatically rebuilt from the latest push to main. Install over the existing app to update.
+          prerelease: true
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+ 

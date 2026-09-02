@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1079206932137",
+    "project_id": "train-log-b2e12",
+    "storage_bucket": "train-log-b2e12.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1079206932137:android:10cbb6fe6845f6c4b2c3b8",
+        "android_client_info": {
+          "package_name": "com.himanshusinghdev.trainlog"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1079206932137-4t07e7pat4iovv0r1puimftbocul899c.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.himanshusinghdev.trainlog",
+            "certificate_hash": "86d06c4ca4c4a7bf60ca24860c88bb5d8c43344d"
+          }
+        },
+        {
+          "client_id": "1079206932137-qk6bhd6oe3lpvb95amtpgc7ejdv74pgl.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCgFrhmlCUUEGZLomqwu9aLa-tA_Ofwf84"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1079206932137-qk6bhd6oe3lpvb95amtpgc7ejdv74pgl.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

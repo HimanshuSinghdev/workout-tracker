@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import { auth, signInWithGoogle, signOutOfGoogle } from "./firebase.js";
 import { localStorageBackend } from "./storagePolyfill.js";
+import { checkForUpdate } from "./updateCheck.js";
+import { Browser } from "@capacitor/browser";
 
 const INDEX_KEY = "workoutlog:index";
 const photoKey = (id) => `workoutlog:photo:${id}`;
@@ -197,6 +199,7 @@ export default function WorkoutTracker() {
   const [user, setUser] = useState(() => auth.currentUser);
   const [offerMigration, setOfferMigration] = useState(false);
   const [migrating, setMigrating] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef(null);
 
@@ -273,6 +276,37 @@ export default function WorkoutTracker() {
     window.addEventListener("storage-backend-changed", handleBackendChanged);
     return () => window.removeEventListener("storage-backend-changed", handleBackendChanged);
   }, [loadIndex, checkForLocalDataToMigrate]);
+
+  // Fired when a redirect-based sign-in (installed-app path) comes back
+  // without actually signing anyone in — a known Android quirk where the
+  // installed app's window doesn't recognize the completed Google flow.
+  useEffect(() => {
+    const handleIncomplete = () => {
+      notify(
+        "Sign-in didn't carry over in the installed app. Open this site in a regular Chrome tab, sign in there once, then reopen the installed app — it'll pick up the login automatically.",
+        "error"
+      );
+    };
+    window.addEventListener("trainlog-signin-incomplete", handleIncomplete);
+    return () => window.removeEventListener("trainlog-signin-incomplete", handleIncomplete);
+  }, [notify]);
+
+  // One-time check, only meaningful inside the installed native app: is
+  // there a newer build available than the one currently installed?
+  useEffect(() => {
+    checkForUpdate().then((info) => {
+      if (info) setUpdateInfo(info);
+    });
+  }, []);
+
+  const handleUpdateNow = async () => {
+    if (!updateInfo) return;
+    try {
+      await Browser.open({ url: updateInfo.downloadUrl });
+    } catch (err) {
+      notify("Couldn't open the download. Try again in a moment.", "error");
+    }
+  };
 
   const handleSignIn = async () => {
     try {
@@ -812,6 +846,51 @@ export default function WorkoutTracker() {
           </div>
         </div>
       </header>
+
+      {updateInfo && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            background: "#1D2025",
+            border: "1px solid #FFD23F",
+            color: "#FFD23F",
+            borderRadius: 8,
+            padding: "10px 12px",
+            fontSize: 12,
+            marginBottom: 16,
+          }}
+        >
+          <Download size={15} style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1, color: "#EDEEEC" }}>
+            A new version ({updateInfo.version}) is available.
+          </span>
+          <button
+            className="wt-btn"
+            onClick={handleUpdateNow}
+            style={{
+              padding: "4px 10px",
+              fontSize: 11,
+              fontWeight: 900,
+              borderRadius: 6,
+              border: "none",
+              background: "#FFD23F",
+              color: "#14161A",
+              cursor: "pointer",
+            }}
+          >
+            UPDATE
+          </button>
+          <button
+            onClick={() => setUpdateInfo(null)}
+            style={{ background: "none", border: "none", color: "inherit", cursor: "pointer" }}
+            aria-label="Dismiss"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
 
       {offerMigration && (
         <div

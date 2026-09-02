@@ -1,0 +1,53 @@
+name: Build Android APK
+
+# Runs whenever you push to main, or you can trigger it manually from the
+# Actions tab. It regenerates the native android/ project from scratch
+# every time (it's not committed to the repo — see .gitignore) so there's
+# nothing to keep in sync by hand.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build web app for Android
+        run: npm run build:android
+
+      - name: Add native Android project
+        run: npx cap add android
+
+      - name: Sync web assets into the native project
+        run: npx cap sync android
+
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: train-log-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk

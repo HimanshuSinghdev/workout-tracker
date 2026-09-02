@@ -1,0 +1,6 @@
+{
+  "appId": "com.himanshusinghdev.trainlog",
+  "appName": "Train Log",
+  "webDir": "dist-android",
+  "bundledWebRuntime": false
+}

@@ -1,4 +1,6 @@
 node_modules
 dist
+dist-android
+android
 .DS_Store
 *.local

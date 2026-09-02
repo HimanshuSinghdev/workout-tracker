@@ -96,7 +96,21 @@ export function signInWithGoogle() {
 // Call once at startup so a pending redirect-based sign-in (from the
 // installed-app path above) gets picked up after the page reloads.
 export function completeRedirectSignIn() {
-  return getRedirectResult(auth).catch(() => null);
+  return getRedirectResult(auth).catch((err) => {
+    // Surface this instead of swallowing it — a silent failure here is
+    // indistinguishable from "nothing happened", which is exactly the bug
+    // we're chasing right now.
+    console.error("Redirect sign-in failed:", err);
+    try {
+      window.alert(
+        "Sign-in error (" + (err && err.code ? err.code : "unknown") + "): " +
+          (err && err.message ? err.message : String(err))
+      );
+    } catch (e) {
+      // ignore
+    }
+    return null;
+  });
 }
  
 export function signOutOfGoogle() {
@@ -108,3 +122,4 @@ export function watchAuthState(callback) {
 }
  
 export { auth, db };
+ 
